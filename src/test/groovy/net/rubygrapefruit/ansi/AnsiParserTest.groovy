@@ -82,6 +82,24 @@ class AnsiParserTest extends Specification {
         visitor.tokens[7] instanceof CarriageReturn
     }
 
+    def "parses private control sequences"() {
+        when:
+        def output = parser.newParser("utf-8", visitor)
+        output.write(bytes("\u001B[?2026h"))
+        output.write(bytes("\u001B[?2026l"))
+        output.write(bytes("\u001B[?1004h"))
+        output.write(bytes("\u001B[?1004l"))
+
+        then:
+        visitor.tokens.size() == 4
+        visitor.tokens[0] instanceof BeginSynchronizedUpdate
+        visitor.tokens[1] instanceof EndSynchronizedUpdate
+        visitor.tokens[2] instanceof UnrecognizedControlSequence
+        visitor.tokens[2].sequence == "[?1004h"
+        visitor.tokens[3] instanceof UnrecognizedControlSequence
+        visitor.tokens[3].sequence == "[?1004l"
+    }
+
     def "parses cursor movement control sequence"() {
         when:
         def output = parser.newParser("utf-8", visitor)
@@ -393,10 +411,6 @@ class AnsiParserTest extends Specification {
         '[a1'    | '[a'     | '1'
         '[a;'    | '[a'     | ';'
         '[1;m2'  | '[1;m'   | '2'
-    }
-
-    byte[] cursorUp() {
-        return "\u001B[A".bytes
     }
 
     byte[] bytes(String str) {

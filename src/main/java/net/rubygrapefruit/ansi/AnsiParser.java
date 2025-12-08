@@ -139,6 +139,18 @@ public class AnsiParser {
                 return true;
             }
         }
+        if (code == 'h') {
+            if ("?2026".equals(params)) {
+                visitor.visit(BeginSynchronizedUpdate.INSTANCE);
+                return true;
+            }
+        }
+        if (code == 'l') {
+            if ("?2026".equals(params)) {
+                visitor.visit(EndSynchronizedUpdate.INSTANCE);
+                return true;
+            }
+        }
         return false;
     }
 
@@ -361,7 +373,7 @@ public class AnsiParser {
                         break;
                     case Param:
                         byte nextDigit = buffer.peek();
-                        if ((nextDigit < '0' || nextDigit > '9') && nextDigit != ';') {
+                        if ((nextDigit < '0' || nextDigit > '9') && nextDigit != ';' && nextDigit != '?') {
                             state = State.Code;
                         } else {
                             currentSequence.append((char) nextDigit);
