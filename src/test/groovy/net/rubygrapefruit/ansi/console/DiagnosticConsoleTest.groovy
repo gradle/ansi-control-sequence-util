@@ -2,6 +2,7 @@ package net.rubygrapefruit.ansi.console
 
 import net.rubygrapefruit.ansi.TextColor
 import net.rubygrapefruit.ansi.token.BackgroundColor
+import net.rubygrapefruit.ansi.token.BeginSynchronizedUpdate
 import net.rubygrapefruit.ansi.token.BoldOff
 import net.rubygrapefruit.ansi.token.BoldOn
 import net.rubygrapefruit.ansi.token.CarriageReturn
@@ -10,6 +11,7 @@ import net.rubygrapefruit.ansi.token.CursorDown
 import net.rubygrapefruit.ansi.token.CursorForward
 import net.rubygrapefruit.ansi.token.CursorToColumn
 import net.rubygrapefruit.ansi.token.CursorUp
+import net.rubygrapefruit.ansi.token.EndSynchronizedUpdate
 import net.rubygrapefruit.ansi.token.EraseInLine
 import net.rubygrapefruit.ansi.token.EraseToBeginningOfLine
 import net.rubygrapefruit.ansi.token.EraseToEndOfLine
@@ -74,6 +76,19 @@ class DiagnosticConsoleTest extends Specification {
 
         console.visit(BoldOff.INSTANCE)
         console.toString() == "{foreground-color bright green}{background-color blue}123{bold-on}{bold-off}"
+
+        console.contents(new DiagnosticConsole()).toString() == console.toString()
+    }
+
+    def "formats private tokens"() {
+        def console = new DiagnosticConsole()
+
+        expect:
+        console.visit(BeginSynchronizedUpdate.INSTANCE)
+        console.toString() == "{begin-synchronized-update}"
+
+        console.visit(EndSynchronizedUpdate.INSTANCE)
+        console.toString() == "{begin-synchronized-update}{end-synchronized-update}"
 
         console.contents(new DiagnosticConsole()).toString() == console.toString()
     }
