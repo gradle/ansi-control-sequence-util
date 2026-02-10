@@ -1,15 +1,7 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'org.eclipse.jgit:org.eclipse.jgit:4.8.0.201706111038-r'
-    }
-}
-
 plugins {
-    id "java-library"
     id "groovy"
+    id "io.github.gradle-nexus.publish-plugin"
+    id "java-library"
     id "maven-publish"
     id "signing"
 }
@@ -18,9 +10,11 @@ repositories {
     mavenCentral()
 }
 
+def isRelease = providers.gradleProperty("release").orNull == "true"
+
 group = 'com.gradle'
 def nextVersion = '0.5'
-version = "${nextVersion}-dev"
+version = isRelease ? nextVersion : "${nextVersion}-dev"
 
 java {
     toolchain {
@@ -41,15 +35,17 @@ test {
     useJUnitPlatform()
 }
 
-def releaseWorkDir = layout.buildDirectory.dir("release")
-def publicationDir = releaseWorkDir.map { it.dir("publication") }
-
-publishing {
+nexusPublishing {
     repositories {
-        maven {
-            url = publicationDir
+        // see https://central.sonatype.org/publish/publish-portal-ossrh-staging-api/#configuration
+        sonatype {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
         }
     }
+}
+
+publishing {
     publications {
         maven(MavenPublication) {
             pom {
@@ -86,111 +82,4 @@ publishing {
 signing {
     sign publishing.publications.maven
     useInMemoryPgpKeys(System.getenv("PGP_SIGNING_KEY"), System.getenv("PGP_SIGNING_KEY_PASSPHRASE"))
-}
-
-//
-// - Create and upload GPG signing key, see https://central.sonatype.org/publish/requirements/gpg/
-// - Create Maven central token, see https://central.sonatype.org/publish/generate-portal-token/
-// - Set `$MAVEN_CENTRAL_USERNAME` and `$MAVEN_CENTRAL_PASSWORD` using values from the previous step
-//
-//
-task upload {
-    dependsOn tasks.publishMavenPublicationToMavenRepository
-    def zipFile = releaseWorkDir.map { it.file("bundle.zip") }
-    doLast {
-        def username = System.getenv("MAVEN_CENTRAL_USERNAME")
-        def password = System.getenv("MAVEN_CENTRAL_PASSWORD")
-        if (username == null || password == null) {
-            throw new IllegalArgumentException("Environment variables MAVEN_CENTRAL_USERNAME and MAVEN_CENTRAL_PASSWORD must be set.")
-        }
-        def authToken = Base64.encoder.withoutPadding().encodeToString("$username:$password".bytes)
-
-        def zip = zipFile.get().asFile
-        zip.delete()
-        exec {
-            commandLine = ["zip", "-r", "-q", zip.path, "."]
-            workingDir = publicationDir.get().asFile
-        }
-
-        exec {
-            commandLine = [
-                    "curl",
-                    "--request", "POST",
-                    "--verbose",
-                    "--fail",
-                    "--header", "Authorization: Bearer $authToken",
-                    "--form", "bundle=@$zip",
-                    "https://central.sonatype.com/api/v1/publisher/upload"
-            ]
-        }
-    }
-}
-
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder
-
-import java.util.regex.Pattern
-
-def skipRepoUpdate = providers.gradleProperty("skipRepoUpdate").orNull == "true"
-def tagName = objects.property(String)
-
-task tag {
-    onlyIf { !skipRepoUpdate }
-    doLast {
-        def repo = new FileRepositoryBuilder().setWorkTree(projectDir).build()
-        try {
-            def git = new Git(repo)
-            git.tag().setName(tagName.get()).call()
-        } finally {
-            repo.close()
-        }
-    }
-}
-
-task incrementVersion {
-    onlyIf { !skipRepoUpdate }
-    doLast {
-        def matcher = Pattern.compile("(\\d+)\\.(\\d+)").matcher(nextVersion)
-        if (!matcher.matches()) {
-            throw new RuntimeException("Could not parse version")
-        }
-        def newVersion = matcher.group(1) + "." + (Integer.parseInt(matcher.group(2)) + 1)
-        buildFile.text = buildFile.text.replace("nextVersion = '${nextVersion}'", "nextVersion = '${newVersion}'")
-        def repo = new FileRepositoryBuilder().setWorkTree(projectDir).build()
-        try {
-            def git = new Git(repo)
-            git.add().addFilepattern("build.gradle").call()
-            git.commit().setMessage("Incremented next version to ${newVersion}").call()
-        } finally {
-            repo.close()
-        }
-    }
-}
-
-publishMavenPublicationToMavenRepository.mustRunAfter(test)
-tag.mustRunAfter(upload)
-incrementVersion.mustRunAfter(tag)
-incrementVersion.mustRunAfter(publish)
-
-//
-// See upload task above for setup instructions
-//
-// Requires setting `$PGP_SIGNING_KEY` and `$PGP_SIGNING_KEY_PASSPHRASE`
-//
-// After running this task:
-// - promote on Maven central, see https://central.sonatype.com/publishing
-// - update README.md with new version
-// - push tag and updates
-//
-task release {
-    dependsOn check, tag, upload, incrementVersion
-    group = 'release'
-    description = 'release the next version'
-}
-
-gradle.taskGraph.whenReady {
-    if (it.allTasks.contains(release)) {
-        project.version = nextVersion
-    }
-    tagName.set("v${project.version}")
 }
