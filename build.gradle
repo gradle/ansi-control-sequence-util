@@ -84,8 +84,8 @@ publishing {
 }
 
 signing {
-    useGpgCmd()
     sign publishing.publications.maven
+    useInMemoryPgpKeys(System.getenv("PGP_SIGNING_KEY"), System.getenv("PGP_SIGNING_KEY_PASSPHRASE"))
 }
 
 //
@@ -175,7 +175,7 @@ incrementVersion.mustRunAfter(publish)
 //
 // See upload task above for setup instructions
 //
-// Run with -Psigning.gnupg.keyName=
+// Requires setting `$PGP_SIGNING_KEY` and `$PGP_SIGNING_KEY_PASSPHRASE`
 //
 // After running this task:
 // - promote on Maven central, see https://central.sonatype.com/publishing
