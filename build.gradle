@@ -18,7 +18,7 @@ repositories {
     mavenCentral()
 }
 
-group = 'net.rubygrapefruit'
+group = 'com.gradle'
 def nextVersion = '0.5'
 version = "${nextVersion}-dev"
 
@@ -55,11 +55,11 @@ publishing {
             pom {
                 name = 'ansi-control-sequence-util'
                 description = 'A library of utilities for parsing text that contains ANSI control sequences'
-                url = 'https://github.com/adammurdoch/ansi-control-sequence-util'
+                url = 'https://github.com/gradle/ansi-control-sequence-util'
                 licenses {
                     license {
                         name = 'The Apache License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
                 }
                 developers {
@@ -67,10 +67,15 @@ publishing {
                         id = 'adam'
                         name = 'Adam Murdoch'
                     }
+                    developer {
+                        name = 'The Gradle team'
+                        organization = 'Gradle Inc.'
+                        organizationUrl = 'https://gradle.com'
+                    }
                 }
                 scm {
-                    connection = 'scm:git:https://github.com/adammurdoch/ansi-control-sequence-util.git'
-                    url = 'https://github.com/adammurdoch/ansi-control-sequence-util'
+                    connection = 'scm:git:https://github.com/gradle/ansi-control-sequence-util.git'
+                    url = 'https://github.com/gradle/ansi-control-sequence-util'
                 }
             }
             from components.java
@@ -126,9 +131,11 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 
 import java.util.regex.Pattern
 
+def skipRepoUpdate = providers.gradleProperty("skipRepoUpdate").orNull == "true"
 def tagName = objects.property(String)
 
 task tag {
+    onlyIf { !skipRepoUpdate }
     doLast {
         def repo = new FileRepositoryBuilder().setWorkTree(projectDir).build()
         try {
@@ -141,6 +148,7 @@ task tag {
 }
 
 task incrementVersion {
+    onlyIf { !skipRepoUpdate }
     doLast {
         def matcher = Pattern.compile("(\\d+)\\.(\\d+)").matcher(nextVersion)
         if (!matcher.matches()) {
