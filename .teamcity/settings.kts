@@ -28,6 +28,7 @@ project {
             gradle {
                 useGradleWrapper = true
                 tasks = "clean release"
+                gradleParams = "-PskipRepoUpdate=true"
             }
         }
         params {
