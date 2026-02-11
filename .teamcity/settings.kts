@@ -27,7 +27,7 @@ project {
         steps {
             gradle {
                 useGradleWrapper = true
-                tasks = "clean publishMavenPublicationToSonatypeRepository"
+                tasks = "clean publishMavenPublicationToSonatypeRepository closeAndReleaseSonatypeStagingRepository"
                 gradleParams = "-Prelease=true"
             }
         }
