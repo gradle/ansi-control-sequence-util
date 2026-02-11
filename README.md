@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'net.rubygrapefruit:ansi-control-sequence-util:0.4'
+    implementation 'com.gradle:ansi-control-sequence-util:0.5'
 }
 ```
 
